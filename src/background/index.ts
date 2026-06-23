@@ -1,6 +1,8 @@
 import type { Submission, ProblemRecord, Settings, StorageData } from '../lib/types'
 import { syncSubmission } from '../lib/notion'
 import { NotionAuthError } from '../lib/types'
+import { updateStreak } from '../lib/streak'
+import { scheduleNextReview, addToReviewQueue } from '../lib/spaced-repetition'
 
 const RETRY_ALARM = 'retry-pending'
 const RETRY_INTERVAL_MINUTES = 3
@@ -36,24 +38,6 @@ async function getSettings(): Promise<Settings> {
     notionDatabaseId: settings.notionDatabaseId ?? '',
     claudeApiKey: settings.claudeApiKey ?? '',
   }
-}
-
-function updateStreak(data: StorageData, submissionDate: string): StorageData {
-  const today = submissionDate
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
-
-  if (data.lastSubmissionDate === today) {
-    return data
-  }
-
-  if (data.lastSubmissionDate === yesterday) {
-    data.streak += 1
-  } else if (data.lastSubmissionDate !== today) {
-    data.streak = 1
-  }
-
-  data.lastSubmissionDate = today
-  return data
 }
 
 async function processSubmission(submission: Submission): Promise<void> {
@@ -107,6 +91,10 @@ async function processSubmission(submission: Submission): Promise<void> {
       record.status = 'Solved'
       if (!record.firstSolved) {
         record.firstSolved = submission.timestamp
+        const next = scheduleNextReview(record)
+        record.lastReviewed = next.lastReviewed
+        record.reviewLevel = next.reviewLevel
+        addToReviewQueue(data, record.slug)
       }
     }
 

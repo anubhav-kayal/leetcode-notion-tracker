@@ -8,6 +8,7 @@
 | `524a39e` | feat: define shared TypeScript types for submissions, settings, and storage |
 | `91a260e` | feat: add LeetCode to Notion language mapping utility |
 | `4eb9ed6` | feat: implement LeetCode submission detection with fetch interception and MutationObserver |
+| `(next)` | feat: add streak module, Claude AI insights, and spaced repetition logic |
 
 ## Day 1 — Project Scaffold ✅
 
@@ -56,11 +57,18 @@
   - `ProblemRecord` management (attempt count, status → Solved on Accepted)
   - Graceful handling of missing API keys and auth errors
 
+## Day 4 — Streak, Claude AI, Spaced Repetition ✅
+
+- [x] `src/lib/streak.ts` — streak tracking, history, daily counts, longest streak computation
+- [x] `src/lib/claude.ts` — Claude AI insight generation and weekly reports via Anthropic API
+- [x] `src/lib/spaced-repetition.ts` — spaced repetition queue with SM-2 intervals (1/3/7/14/30/90 days)
+- [x] Extended `ProblemRecord` with `lastReviewed` and `reviewLevel` fields
+- [x] Refactored `background.ts` to use streak module; auto-schedules first review on solve
+
 ### Upcoming
 
 | Day | Focus |
 |-----|-------|
-| Day 4 | `src/lib/streak.ts` + `src/lib/claude.ts` + `src/lib/spaced-repetition.ts` |
 | Day 5 | Popup UI (Popup.tsx, full design with stats, streak, review nudge) |
 | Day 6 | Dashboard — Overview, History, Review, Settings pages |
 | Day 7 | Onboarding, components (Heatmap, TrendChart, ReviewCard), polish, E2E test |
