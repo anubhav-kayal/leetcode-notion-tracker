@@ -36,6 +36,8 @@ export interface ProblemRecord {
   attemptCount: number
   lastAttempted: number
   firstSolved?: number
+  lastReviewed?: number
+  reviewLevel?: number
 }
 
 export interface Settings {
