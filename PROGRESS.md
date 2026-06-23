@@ -39,11 +39,27 @@
   - Deduplication via `Set<string>` with 5-second window
   - Sends structured `SUBMISSION` message to background
 
+## Day 3 — Background Service Worker + Notion API Client ✅
+
+- [x] `src/lib/notion.ts` — Notion API client
+  - `findProblemBySlug()` — query database by slug to find existing pages
+  - `createProblemPage()` — create new page with title, slug, difficulty, status, URL, date, code block
+  - `updateProblemPage()` — update status, attempt count, last attempted, append code block
+  - `syncSubmission()` — high-level upsert (update existing or create new)
+  - `queryDatabaseProblems()` — paginated fetch of all problems
+  - Auth error handling via `NotionAuthError` / `NotionNotFoundError` classes
+- [x] `src/background/index.ts` — service worker
+  - Message listener for `SUBMISSION` type from content script
+  - `processSubmission()` — deduplicate, store locally, sync to Notion, update streak
+  - `retryPending()` — alarm-based retry every 3 minutes for failed syncs
+  - `updateStreak()` — daily streak tracking (today / yesterday logic)
+  - `ProblemRecord` management (attempt count, status → Solved on Accepted)
+  - Graceful handling of missing API keys and auth errors
+
 ### Upcoming
 
 | Day | Focus |
 |-----|-------|
-| Day 3 | `src/background/index.ts` (message listener, handleSubmission, Notion sync) + `src/lib/notion.ts` |
 | Day 4 | `src/lib/streak.ts` + `src/lib/claude.ts` + `src/lib/spaced-repetition.ts` |
 | Day 5 | Popup UI (Popup.tsx, full design with stats, streak, review nudge) |
 | Day 6 | Dashboard — Overview, History, Review, Settings pages |
