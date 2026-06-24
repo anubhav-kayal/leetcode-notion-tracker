@@ -21,8 +21,13 @@ const manifest = {
   content_scripts: [
     {
       matches: ['https://leetcode.com/problems/*'],
-      js: ['src/content/index.ts'],
-      run_at: 'document_idle',
+      js: ['src/content/isolated.ts'],
+      run_at: 'document_start',
+    },
+    {
+      matches: ['https://leetcode.com/problems/*'],
+      js: ['src/content/main-world.ts'],
+      run_at: 'document_start',
       world: 'MAIN',
     },
   ],
