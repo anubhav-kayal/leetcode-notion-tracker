@@ -26,6 +26,10 @@ const manifest = {
       world: 'MAIN',
     },
   ],
+  options_ui: {
+    page: 'src/dashboard/index.html',
+    open_in_tab: true,
+  },
   action: {
     default_popup: 'src/popup/index.html',
     default_icon: {

@@ -1,11 +1,11 @@
-import { FireIcon, ChartBarIcon, ClockIcon, Cog6ToothIcon } from 'lucide-react'
+import { FlameIcon, ChartBarIcon, ClockIcon, CogIcon } from 'lucide-react'
 import { useStorageData, useSettings } from '../hooks/useStorage'
 import { calculateStreak } from '../lib/streak'
 import { getReviewQueue } from '../lib/spaced-repetition'
 import type { ProblemRecord } from '../lib/types'
 
 function openDashboard() {
-  chrome.tabs.create({ url: chrome.runtime.getURL('dashboard/index.html') })
+  chrome.runtime.openOptionsPage?.()
 }
 
 function openOptions() {
@@ -47,7 +47,7 @@ export function Popup() {
             className="p-1.5 rounded-md bg-gray-800 hover:bg-gray-700 transition-colors"
             title="Settings"
           >
-            <Cog6ToothIcon size={16} className="text-gray-300" />
+            <CogIcon size={16} className="text-gray-300" />
           </button>
         </div>
       </div>
@@ -63,7 +63,7 @@ export function Popup() {
 
       <div className="grid grid-cols-3 gap-2 mb-3">
         <StatCard
-          icon={<FireIcon size={16} className="text-orange-400" />}
+          icon={<FlameIcon size={16} className="text-orange-400" />}
           label="Streak"
           value={`${streakInfo.currentStreak}d`}
           sub={streakInfo.todaySubmitted ? 'Today ✓' : 'Not yet'}

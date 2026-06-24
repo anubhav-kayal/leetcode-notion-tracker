@@ -89,9 +89,35 @@ export function Settings() {
     </div>
   )
 
+  const needsSetup = !notionKey && !notionDb
+
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Settings</h1>
+
+      {needsSetup && (
+        <div className="max-w-lg mb-8 bg-indigo-900/20 border border-indigo-700/30 rounded-xl p-6">
+          <h2 className="text-lg font-semibold text-indigo-300 mb-3">Setup Guide</h2>
+          <ol className="space-y-3 text-sm text-gray-300">
+            <li className="flex gap-3">
+              <span className="flex items-center justify-center shrink-0 w-6 h-6 rounded-full bg-indigo-600 text-xs font-bold text-white">1</span>
+              <span>Go to <a href="https://www.notion.so/my-integrations" target="_blank" rel="noopener noreferrer" className="text-indigo-400 underline">notion.so/my-integrations</a> and create a new integration. Copy the API key.</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="flex items-center justify-center shrink-0 w-6 h-6 rounded-full bg-indigo-600 text-xs font-bold text-white">2</span>
+              <span>Create a database with properties: <code className="text-indigo-300 bg-indigo-900/30 px-1 rounded">Name</code> (Title), <code className="text-indigo-300 bg-indigo-900/30 px-1 rounded">Slug</code> (Text), <code className="text-indigo-300 bg-indigo-900/30 px-1 rounded">Difficulty</code> (Select), <code className="text-indigo-300 bg-indigo-900/30 px-1 rounded">Status</code> (Select), <code className="text-indigo-300 bg-indigo-900/30 px-1 rounded">URL</code> (URL), <code className="text-indigo-300 bg-indigo-900/30 px-1 rounded">Last Attempted</code> (Date), <code className="text-indigo-300 bg-indigo-900/30 px-1 rounded">Attempt Count</code> (Number).</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="flex items-center justify-center shrink-0 w-6 h-6 rounded-full bg-indigo-600 text-xs font-bold text-white">3</span>
+              <span>Share the database with your integration, then copy the Database ID from the URL.</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="flex items-center justify-center shrink-0 w-6 h-6 rounded-full bg-indigo-600 text-xs font-bold text-white">4</span>
+              <span>Fill in the fields below and click <strong>Save Settings</strong>.</span>
+            </li>
+          </ol>
+        </div>
+      )}
 
       <div className="max-w-lg space-y-6">
         <div className="bg-gray-800/30 rounded-xl p-5 border border-gray-800">

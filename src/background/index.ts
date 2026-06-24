@@ -192,8 +192,11 @@ chrome.runtime.onMessage.addListener((
   sendResponse({ received: true })
 })
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener((details) => {
   chrome.alarms.create(RETRY_ALARM, { delayInMinutes: RETRY_INTERVAL_MINUTES })
+  if (details.reason === 'install') {
+    chrome.runtime.openOptionsPage()
+  }
 })
 
 chrome.alarms.onAlarm.addListener((alarm: chrome.alarms.Alarm) => {

@@ -5,7 +5,6 @@ interface HeatmapProps {
 }
 
 const CELL_SIZE = 12
-const CELL_GAP = 2
 const WEEKS_TO_SHOW = 26
 
 function getDateString(d: Date): string {
