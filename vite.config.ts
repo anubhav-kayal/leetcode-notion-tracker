@@ -15,7 +15,7 @@ const manifest = {
     'https://api.anthropic.com/*',
   ],
   background: {
-    service_worker: 'src/background/index.ts',
+    service_worker: 'src/background/service-worker.ts',
     type: 'module',
   },
   content_scripts: [
