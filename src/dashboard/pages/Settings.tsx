@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { SaveIcon, EyeIcon, EyeOffIcon } from 'lucide-react'
 import { useSettings } from '../../hooks/useStorage'
 import { generateInsight } from '../../lib/claude'
@@ -36,7 +36,7 @@ function InputField({
 }
 
 export function Settings() {
-  const { settings, updateSettings } = useSettings()
+  const { settings, loading, updateSettings } = useSettings()
   const { data, updateData } = useStorageData()
   const [notionKey, setNotionKey] = useState(settings.notionApiKey)
   const [notionDb, setNotionDb] = useState(settings.notionDatabaseId)
@@ -46,12 +46,29 @@ export function Settings() {
   const [saved, setSaved] = useState(false)
   const [generatingInsight, setGeneratingInsight] = useState(false)
 
+  useEffect(() => {
+    if (!loading) {
+      setNotionKey(settings.notionApiKey)
+      setNotionDb(settings.notionDatabaseId)
+      setClaudeKey(settings.claudeApiKey)
+    }
+  }, [settings, loading])
+
   async function handleSave() {
     setSaving(true)
+    
+    // Auto-extract Database ID from full Notion URL if the user pasted the entire URL
+    let cleanDbId = notionDb.trim()
+    const match = cleanDbId.match(/[a-f0-9]{32}/i)
+    if (match) {
+      cleanDbId = match[0]
+      setNotionDb(cleanDbId)
+    }
+
     await updateSettings(() => ({
-      notionApiKey: notionKey,
-      notionDatabaseId: notionDb,
-      claudeApiKey: claudeKey,
+      notionApiKey: notionKey.trim(),
+      notionDatabaseId: cleanDbId,
+      claudeApiKey: claudeKey.trim(),
     }))
     setSaving(false)
     setSaved(true)
