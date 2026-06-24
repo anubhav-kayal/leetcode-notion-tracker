@@ -8,67 +8,90 @@
 | `524a39e` | feat: define shared TypeScript types for submissions, settings, and storage |
 | `91a260e` | feat: add LeetCode to Notion language mapping utility |
 | `4eb9ed6` | feat: implement LeetCode submission detection with fetch interception and MutationObserver |
-| `(next)` | feat: add streak module, Claude AI insights, and spaced repetition logic |
+| `1b426fe` | docs: update PROGRESS.md with Day 2 completion and commit history |
+| `127159e` | feat: add Notion API client and background service worker with sync, retry, and streak tracking |
+| `de97a00` | feat: add streak tracking, Claude AI insights, and spaced repetition utilities |
+| `f6dd46b` | feat: add useStorage and useSettings hooks for chrome.storage access |
+| `40d98fe` | feat: implement popup UI with stats, streak display, AI insight, and review nudge |
+| `cc6a5ee` | feat: add Heatmap, TrendChart, and ReviewCard shared components |
+| `461aca2` | feat: add dashboard with Overview, History, Review, and Settings pages |
+| `5aea17e` | feat: add onboarding flow with guided setup for Notion and Claude API keys |
+| `77a5f04` | feat: wire up dashboard as options page, add onboarding banner, and first-run setup flow |
 
-## Day 1 — Project Scaffold ✅
+## Project Structure
 
-- [x] Vite + React-TS project created
-- [x] Dependencies installed (recharts, lucide-react, react-router-dom, @crxjs/vite-plugin, tailwindcss, @types/chrome)
-- [x] Config files: vite.config.ts, tailwind.config.js, postcss.config.js, tsconfigs
-- [x] Directory structure created
-- [x] globals.css with Tailwind directives
-- [x] MV3 manifest with `world: "MAIN"` content script
-- [x] Icon PNGs generated
-- [x] Popup stub with React entry
-- [x] Build verified
-- [x] Git repo initialized + pushed to GitHub
+```
+src/
+├── background/       # Service worker — Notion API, streak, AI, retry
+├── content/          # LeetCode page — fetch interception, MutationObserver
+├── popup/            # Extension popup — glance stats, streak, recent activity
+├── dashboard/        # Full dashboard — Overview, History, Review, Settings
+├── components/       # Reusable UI — Heatmap, TrendChart, ReviewCard
+├── hooks/            # useStorage, useSettings — typed chrome.storage access
+├── lib/              # Core — types, notion client, streak, claude, spaced-repetition
+└── styles/           # Tailwind CSS config
+```
 
-## Day 2 — Types + Language Map + Content Detection ✅
+## What's Built
 
-- [x] `src/lib/types.ts` — all shared TypeScript types
-  - `Submission`, `ProblemRecord`, `Settings`, `StorageData` interfaces
-  - `Difficulty`, `SubmissionResult` union types
-  - `NotionAuthError`, `NotionNotFoundError` error classes
-- [x] `src/lib/language-map.ts` — LeetCode lang → Notion lang mapping
-  - Covers 20 languages with `toNotionLanguage()` helper
-  - Falls back to `plain text` for unknown
-- [x] `src/content/index.ts` — submission detection
-  - Primary: `window.fetch` override intercepting `/submit/` and GraphQL
-  - Extracts result, language, runtime, memory from response
-  - Scrapes problem title, slug, difficulty from DOM
-  - Fallback: MutationObserver watching for result containers
-  - Deduplication via `Set<string>` with 5-second window
-  - Sends structured `SUBMISSION` message to background
+### Core Infrastructure
+- [x] Vite + React-TS + Tailwind + CRXJS scaffold
+- [x] MV3 manifest with content script (`world: MAIN`), background service worker, popup
+- [x] Shared TypeScript types (`Submission`, `ProblemRecord`, `Settings`, `StorageData`)
+- [x] LeetCode → Notion language mapping (20 languages)
 
-## Day 3 — Background Service Worker + Notion API Client ✅
+### Submission Detection
+- [x] `window.fetch` override intercepting `/submit/` and GraphQL `/graphql`
+- [x] Extracts result, language, runtime, memory, code from response
+- [x] DOM scraping for problem title, slug, difficulty
+- [x] MutationObserver fallback for result containers
+- [x] Deduplication via `Set<string>` with 5-second window
 
-- [x] `src/lib/notion.ts` — Notion API client
-  - `findProblemBySlug()` — query database by slug to find existing pages
-  - `createProblemPage()` — create new page with title, slug, difficulty, status, URL, date, code block
-  - `updateProblemPage()` — update status, attempt count, last attempted, append code block
-  - `syncSubmission()` — high-level upsert (update existing or create new)
-  - `queryDatabaseProblems()` — paginated fetch of all problems
-  - Auth error handling via `NotionAuthError` / `NotionNotFoundError` classes
-- [x] `src/background/index.ts` — service worker
-  - Message listener for `SUBMISSION` type from content script
-  - `processSubmission()` — deduplicate, store locally, sync to Notion, update streak
-  - `retryPending()` — alarm-based retry every 3 minutes for failed syncs
-  - `updateStreak()` — daily streak tracking (today / yesterday logic)
-  - `ProblemRecord` management (attempt count, status → Solved on Accepted)
-  - Graceful handling of missing API keys and auth errors
+### Notion Integration
+- [x] Full API client — `findProblemBySlug`, `createProblemPage`, `updateProblemPage`
+- [x] `syncSubmission()` — upsert (update existing or create new)
+- [x] Paginated `queryDatabaseProblems()`
+- [x] Auth error handling (`NotionAuthError`, `NotionNotFoundError`)
+- [x] Background service worker — process, deduplicate, sync, retry with alarms
 
-## Day 4 — Streak, Claude AI, Spaced Repetition ✅
+### Library Utilities
+- [x] `streak.ts` — current streak, longest streak, `calculateStreak()`
+- [x] `claude.ts` — Claude API insight generation with structured prompts
+- [x] `spaced-repetition.ts` — review queue with priority scoring
 
-- [x] `src/lib/streak.ts` — streak tracking, history, daily counts, longest streak computation
-- [x] `src/lib/claude.ts` — Claude AI insight generation and weekly reports via Anthropic API
-- [x] `src/lib/spaced-repetition.ts` — spaced repetition queue with SM-2 intervals (1/3/7/14/30/90 days)
-- [x] Extended `ProblemRecord` with `lastReviewed` and `reviewLevel` fields
-- [x] Refactored `background.ts` to use streak module; auto-schedules first review on solve
+### Hooks
+- [x] `useStorageData()` — typed reactive hook for `chrome.storage.local`
+- [x] `useSettings()` — typed reactive hook for `chrome.storage.sync`
 
-### Upcoming
+### Popup UI
+- [x] 3-card stat display: Streak, Solved, Review queue
+- [x] AI Insight panel (when available)
+- [x] Recent activity list (last 5 submissions)
+- [x] Navigation to dashboard and settings
+- [x] Setup warning banner when Notion not configured
 
-| Day | Focus |
-|-----|-------|
-| Day 5 | Popup UI (Popup.tsx, full design with stats, streak, review nudge) |
-| Day 6 | Dashboard — Overview, History, Review, Settings pages |
-| Day 7 | Onboarding, components (Heatmap, TrendChart, ReviewCard), polish, E2E test |
+### Dashboard (options page, opens in tab)
+- [x] **Overview** — stat grid, GitHub-style heatmap, 30-day trend chart
+- [x] **History** — sortable/filterable table with search, difficulty/status filters
+- [x] **Review** — spaced repetition queue with dismiss, refresh, difficulty badges
+- [x] **Settings** — Notion API key, DB ID, Claude key, save/show/hide, reset all data
+- [x] Onboarding banner with step-by-step setup guide
+
+### Components
+- [x] `Heatmap` — GitHub-style contribution grid (26 weeks) with color intensity
+- [x] `TrendChart` — 30-day line chart (total/accepted) using Recharts
+- [x] `ReviewCard` — card with difficulty color, status, time since, dismiss, LeetCode link
+
+### Integration
+- [x] Dashboard wired as `options_ui` with `open_in_tab: true`
+- [x] First-run opens dashboard automatically on install
+- [x] Popup opens dashboard via `chrome.runtime.openOptionsPage()`
+
+## Building
+
+```bash
+npm run build    # tsc -b && vite build → output in dist/
+npm run dev      # HMR for popup/dashboard
+```
+
+Load `dist/` in Chrome at `chrome://extensions` with Developer mode.
