@@ -47,8 +47,8 @@ export function TrendChart({ submissions, days = 30 }: TrendChartProps) {
   }, [submissions, days])
 
   return (
-    <div className="w-full h-48">
-      <ResponsiveContainer>
+    <div className="w-full h-48 min-w-0">
+      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
         <LineChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
           <XAxis
