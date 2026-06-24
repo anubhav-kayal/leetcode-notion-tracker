@@ -1,9 +1,12 @@
 import type { Submission, StorageData } from './types'
 
 export interface StreakInfo {
+  currentStreak: number
+  longestStreak: number
+  lastSubmissionDate: string | null
+  todaySubmitted: boolean
   current: number
   longest: number
-  lastSubmissionDate: string
   totalActiveDays: number
 }
 
@@ -47,6 +50,9 @@ export function getStreakInfo(data: StorageData): StreakInfo {
     longest: data.streak,
     lastSubmissionDate: data.lastSubmissionDate,
     totalActiveDays: data.streak,
+    currentStreak: data.streak,
+    longestStreak: data.streak,
+    todaySubmitted: data.lastSubmissionDate === new Date().toISOString().split('T')[0],
   }
 }
 
@@ -70,4 +76,72 @@ export function computeLongestStreak(submissions: Submission[]): number {
   }
 
   return longest
+}
+
+export function calculateStreak(submissionDates: string[]): StreakInfo {
+  if (submissionDates.length === 0) {
+    return {
+      currentStreak: 0,
+      longestStreak: 0,
+      lastSubmissionDate: null,
+      todaySubmitted: false,
+      current: 0,
+      longest: 0,
+      totalActiveDays: 0,
+    }
+  }
+
+  const uniqueDates = [...new Set(submissionDates)].sort().reverse()
+
+  const today = new Date().toISOString().split('T')[0]
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+
+  const todaySubmitted = uniqueDates[0] === today
+
+  let currentStreak = 0
+  let expected = today
+
+  if (!todaySubmitted) {
+    expected = yesterday
+  }
+
+  for (const date of uniqueDates) {
+    if (date === expected) {
+      currentStreak++
+      const d = new Date(expected)
+      d.setDate(d.getDate() - 1)
+      expected = d.toISOString().split('T')[0]
+    } else if (date < expected) {
+      break
+    }
+  }
+
+  let longestStreak = 0
+  let streak = 1
+  const ascending = [...uniqueDates].reverse()
+
+  for (let i = 1; i < ascending.length; i++) {
+    const prev = new Date(ascending[i - 1])
+    const curr = new Date(ascending[i])
+    const diffMs = curr.getTime() - prev.getTime()
+    const diffDays = Math.round(diffMs / 86400000)
+
+    if (diffDays === 1) {
+      streak++
+    } else {
+      longestStreak = Math.max(longestStreak, streak)
+      streak = 1
+    }
+  }
+  longestStreak = Math.max(longestStreak, streak)
+
+  return {
+    currentStreak,
+    longestStreak,
+    lastSubmissionDate: uniqueDates[0],
+    todaySubmitted,
+    current: currentStreak,
+    longest: longestStreak,
+    totalActiveDays: uniqueDates.length,
+  }
 }
