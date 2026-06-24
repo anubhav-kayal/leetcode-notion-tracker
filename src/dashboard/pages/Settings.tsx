@@ -4,6 +4,37 @@ import { useSettings } from '../../hooks/useStorage'
 import { generateInsight } from '../../lib/claude'
 import { useStorageData } from '../../hooks/useStorage'
 
+function InputField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  isPassword,
+  showValue,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  placeholder: string
+  isPassword?: boolean
+  showValue: boolean
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-300 mb-1">{label}</label>
+      <div className="relative">
+        <input
+          type={isPassword && !showValue ? 'password' : 'text'}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full bg-gray-800 border border-gray-700 rounded-lg py-2 px-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 pr-10"
+        />
+      </div>
+    </div>
+  )
+}
+
 export function Settings() {
   const { settings, updateSettings } = useSettings()
   const { data, updateData } = useStorageData()
@@ -62,33 +93,6 @@ export function Settings() {
     }
   }
 
-  const InputField = ({
-    label,
-    value,
-    onChange,
-    placeholder,
-    isPassword,
-  }: {
-    label: string
-    value: string
-    onChange: (v: string) => void
-    placeholder: string
-    isPassword?: boolean
-  }) => (
-    <div>
-      <label className="block text-sm font-medium text-gray-300 mb-1">{label}</label>
-      <div className="relative">
-        <input
-          type={isPassword && !showKeys ? 'password' : 'text'}
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="w-full bg-gray-800 border border-gray-700 rounded-lg py-2 px-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 pr-10"
-        />
-      </div>
-    </div>
-  )
-
   const needsSetup = !notionKey && !notionDb
 
   return (
@@ -131,6 +135,7 @@ export function Settings() {
               onChange={setNotionKey}
               placeholder="ntn_..."
               isPassword
+              showValue={showKeys}
             />
             <InputField
               label="Database ID"
@@ -138,6 +143,7 @@ export function Settings() {
               onChange={setNotionDb}
               placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
               isPassword
+              showValue={showKeys}
             />
           </div>
         </div>
@@ -153,6 +159,7 @@ export function Settings() {
               onChange={setClaudeKey}
               placeholder="sk-ant-..."
               isPassword
+              showValue={showKeys}
             />
             <button
               onClick={handleGenerateInsight}

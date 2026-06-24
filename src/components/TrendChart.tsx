@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import {
   LineChart,
   Line,
@@ -15,28 +16,35 @@ interface TrendChartProps {
 }
 
 export function TrendChart({ submissions, days = 30 }: TrendChartProps) {
-  const data: { date: string; count: number; accepted: number }[] = []
+  const data = useMemo(() => {
+    const result: { date: string; count: number; accepted: number }[] = []
+    if (submissions.length === 0) return result
+    const now = submissions.reduce(
+      (max, s) => Math.max(max, s.timestamp),
+      0
+    )
+    const startTs = now - days * 86400000
 
-  const now = Date.now()
-  const startTs = now - days * 86400000
+    const dayMap: Record<string, { count: number; accepted: number }> = {}
+    for (const s of submissions) {
+      if (s.timestamp < startTs) continue
+      const date = new Date(s.timestamp).toISOString().split('T')[0]
+      if (!dayMap[date]) dayMap[date] = { count: 0, accepted: 0 }
+      dayMap[date].count++
+      if (s.result === 'Accepted') dayMap[date].accepted++
+    }
 
-  const dayMap: Record<string, { count: number; accepted: number }> = {}
-  for (const s of submissions) {
-    if (s.timestamp < startTs) continue
-    const date = new Date(s.timestamp).toISOString().split('T')[0]
-    if (!dayMap[date]) dayMap[date] = { count: 0, accepted: 0 }
-    dayMap[date].count++
-    if (s.result === 'Accepted') dayMap[date].accepted++
-  }
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date(now - i * 86400000).toISOString().split('T')[0]
+      result.push({
+        date,
+        count: dayMap[date]?.count ?? 0,
+        accepted: dayMap[date]?.accepted ?? 0,
+      })
+    }
 
-  for (let i = days - 1; i >= 0; i--) {
-    const date = new Date(now - i * 86400000).toISOString().split('T')[0]
-    data.push({
-      date,
-      count: dayMap[date]?.count ?? 0,
-      accepted: dayMap[date]?.accepted ?? 0,
-    })
-  }
+    return result
+  }, [submissions, days])
 
   return (
     <div className="w-full h-48">

@@ -31,25 +31,20 @@ export function History() {
     }
 
     items.sort((a, b) => {
-      let cmp = 0
+      const dir = sortDir === 'asc' ? 1 : -1
       switch (sortField) {
         case 'title':
-          cmp = a.title.localeCompare(b.title)
-          break
+          return a.title.localeCompare(b.title) * dir
         case 'difficulty': {
           const order = { Easy: 0, Medium: 1, Hard: 2 }
-          cmp = (order[a.difficulty] ?? 0) - (order[b.difficulty] ?? 0)
-          break
+          return ((order[a.difficulty] ?? 0) - (order[b.difficulty] ?? 0)) * dir
         }
         case 'result':
-          cmp = a.status.localeCompare(b.status)
-          break
+          return a.status.localeCompare(b.status) * dir
         case 'date':
         default:
-          cmp = a.lastAttempted - b.lastAttempted
-          break
+          return (a.lastAttempted - b.lastAttempted) * dir
       }
-      return sortDir === 'asc' ? cmp : -cmp
     })
 
     return items
