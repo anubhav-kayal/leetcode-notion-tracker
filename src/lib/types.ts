@@ -23,6 +23,15 @@ export interface Submission {
   notionPageId?: string
   notionPageUrl?: string
   synced: boolean
+  topics?: string[]
+  timeSeconds?: number
+}
+
+export interface SM2State {
+  interval: number
+  repetition: number
+  easinessFactor: number
+  nextReviewDate: number
 }
 
 export interface ProblemRecord {
@@ -38,12 +47,26 @@ export interface ProblemRecord {
   firstSolved?: number
   lastReviewed?: number
   reviewLevel?: number
+  companies?: string[]
+  topics?: string[]
+  notes?: string
+  notesUpdatedAt?: number
+  sm2?: SM2State
 }
 
 export interface Settings {
   notionApiKey: string
   notionDatabaseId: string
   claudeApiKey: string
+  theme: 'light' | 'dark' | 'system'
+  targetCompany?: string
+}
+
+export interface Interview {
+  id: string
+  company: string
+  date: number
+  status: 'Upcoming' | 'Completed' | 'Cancelled'
 }
 
 export interface StorageData {
@@ -55,7 +78,17 @@ export interface StorageData {
   insight: { text: string; generatedAt: number } | null
   pendingQueue: Submission[]
   reviewQueue: string[]
+  companyList: string[]
+  interviews: Interview[]
 }
+
+export const TOP_COMPANIES = [
+  'Google', 'Meta', 'Amazon', 'Microsoft', 'Apple', 'Netflix', 'Uber', 'Airbnb', 
+  'LinkedIn', 'Twitter', 'Stripe', 'Dropbox', 'Salesforce', 'Adobe', 'Oracle', 
+  'Walmart', 'Bloomberg', 'Goldman Sachs', 'JPMorgan', 'ByteDance', 'Snap', 
+  'Pinterest', 'Lyft', 'DoorDash', 'Coinbase', 'Robinhood', 'Atlassian', 
+  'Shopify', 'Twilio', 'Palantir'
+]
 
 export class NotionAuthError extends Error {
   constructor() {

@@ -2,7 +2,9 @@ import type { Submission, ProblemRecord, Settings, StorageData } from '../lib/ty
 import { syncSubmission } from '../lib/notion'
 import { NotionAuthError } from '../lib/types'
 import { updateStreak } from '../lib/streak'
-import { scheduleNextReview, addToReviewQueue } from '../lib/spaced-repetition'
+import { calculateSM2 } from '../lib/spaced-repetition'
+
+import { TOP_COMPANIES } from '../lib/types'
 
 const RETRY_ALARM = 'retry-pending'
 const RETRY_INTERVAL_MINUTES = 3
@@ -17,13 +19,15 @@ function getDefaultStorage(): StorageData {
     insight: null,
     pendingQueue: [],
     reviewQueue: [],
+    companyList: [...TOP_COMPANIES],
+    interviews: [],
   }
 }
 
 async function getStorage(): Promise<StorageData> {
   const result = await chrome.storage.local.get('leetrackData')
   if (!result.leetrackData) return getDefaultStorage()
-  return { ...getDefaultStorage(), ...result.leetrackData }
+  return { ...getDefaultStorage(), ...(result.leetrackData as Partial<StorageData>) }
 }
 
 async function setStorage(data: StorageData): Promise<void> {
@@ -37,6 +41,7 @@ async function getSettings(): Promise<Settings> {
     notionApiKey: settings.notionApiKey ?? '',
     notionDatabaseId: settings.notionDatabaseId ?? '',
     claudeApiKey: settings.claudeApiKey ?? '',
+    theme: settings.theme ?? 'system',
   }
 }
 
@@ -82,6 +87,7 @@ async function processSubmission(submission: Submission): Promise<void> {
       status: 'Attempted',
       attemptCount: 0,
       lastAttempted: submission.timestamp,
+      topics: submission.topics,
     }
 
     record.attemptCount += 1
@@ -91,10 +97,7 @@ async function processSubmission(submission: Submission): Promise<void> {
       record.status = 'Solved'
       if (!record.firstSolved) {
         record.firstSolved = submission.timestamp
-        const next = scheduleNextReview(record)
-        record.lastReviewed = next.lastReviewed
-        record.reviewLevel = next.reviewLevel
-        addToReviewQueue(data, record.slug)
+        record.sm2 = calculateSM2(4) // 4 = Good (initial solve)
       }
     }
 
@@ -150,6 +153,7 @@ async function retryPending(): Promise<void> {
         status: 'Attempted',
         attemptCount: 0,
         lastAttempted: submission.timestamp,
+        topics: submission.topics,
       }
 
       record.attemptCount += 1
@@ -182,15 +186,74 @@ async function retryPending(): Promise<void> {
 }
 
 chrome.runtime.onMessage.addListener((
-  message: { type: string; data: Submission },
+  message: { type: string; data: any },
   _sender: chrome.runtime.MessageSender,
   sendResponse: (response?: unknown) => void
 ) => {
   if (message.type === 'SUBMISSION') {
     processSubmission(message.data).catch(console.error)
+  } else if (message.type === 'TAG_PROBLEM') {
+    handleTagProblem(message.data).catch(console.error)
   }
   sendResponse({ received: true })
 })
+
+import { updateNote } from '../lib/notion'
+import { findProblemBySlug } from '../lib/notion'
+
+async function handleTagProblem({ slug, companies, notes }: { slug: string, companies: string[], notes: string }) {
+  const data = await getStorage()
+  const settings = await getSettings()
+  
+  if (!data.problems[slug]) return
+  
+  const problem = data.problems[slug]
+  problem.companies = companies
+  problem.notes = notes
+  problem.notesUpdatedAt = Date.now()
+  
+  // Add new companies to companyList
+  for (const c of companies) {
+    if (!data.companyList.includes(c)) {
+      data.companyList.push(c)
+    }
+  }
+  
+  await setStorage(data)
+
+  if (!settings.notionApiKey || !settings.notionDatabaseId) return
+
+  try {
+    const found = await findProblemBySlug(settings.notionApiKey, settings.notionDatabaseId, slug)
+    if (found) {
+      // We need to update the Companies property. 
+      // `updateProblemPage` requires a submission. But we only want to update companies.
+      // Let's call Notion API directly here or add a function to `notion.ts`.
+      // Actually, since we added `updateNote` to `notion.ts`, we can update the note block.
+      if (notes) {
+        await updateNote(settings.notionApiKey, found.pageId, notes)
+      }
+      
+      // Update companies property
+      const res = await fetch(`https://api.notion.com/v1/pages/${found.pageId}`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${settings.notionApiKey}`,
+          'Notion-Version': '2022-06-28',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          properties: {
+            Companies: { multi_select: companies.map(c => ({ name: c })) }
+          }
+        })
+      })
+      if (!res.ok) console.error('Failed to update companies', await res.text())
+    }
+  } catch (err) {
+    console.error('Failed to update Notion with tags/notes', err)
+  }
+}
 
 chrome.runtime.onInstalled.addListener((details) => {
   chrome.alarms.create(RETRY_ALARM, { delayInMinutes: RETRY_INTERVAL_MINUTES })

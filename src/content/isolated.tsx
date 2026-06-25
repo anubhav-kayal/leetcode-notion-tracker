@@ -1,6 +1,40 @@
+import { createRoot } from 'react-dom/client'
+import { FloatingWidget } from './FloatingWidget'
+import styles from '../styles/globals.css?inline'
+
 console.log('LeetTrack: isolated content script injected at', document.readyState)
 
+const pageLoadTime = Date.now()
 const sentIds = new Set<string>()
+
+function injectWidget(slug: string) {
+  let container = document.getElementById('leettrack-widget-root')
+  if (container) return
+
+  container = document.createElement('div')
+  container.id = 'leettrack-widget-root'
+  document.body.appendChild(container)
+
+  const shadow = container.attachShadow({ mode: 'open' })
+  
+  const styleEl = document.createElement('style')
+  styleEl.textContent = styles
+  shadow.appendChild(styleEl)
+
+  const rootEl = document.createElement('div')
+  shadow.appendChild(rootEl)
+
+  const root = createRoot(rootEl)
+
+  function close() {
+    root.unmount()
+    container?.remove()
+  }
+
+  root.render(<FloatingWidget slug={slug} onClose={close} />)
+  
+  setTimeout(close, 30000)
+}
 
 function generateDedupId(problemSlug: string, timestamp: number): string {
   const rounded = Math.round(timestamp / 5000) * 5000
@@ -37,6 +71,7 @@ interface ScrapedProblem {
   title: string
   slug: string
   difficulty: Difficulty
+  topics: string[]
 }
 
 function scrapeProblemInfo(): ScrapedProblem | null {
@@ -69,7 +104,7 @@ function scrapeProblemInfo(): ScrapedProblem | null {
         difficulty = d as Difficulty
       }
     } else {
-      const candidates = document.querySelectorAll('span, div')
+      const candidates = Array.from(document.querySelectorAll('span, div'))
       for (const el of candidates) {
         const text = el.textContent?.trim()
         if (text === 'Easy' || text === 'Medium' || text === 'Hard') {
@@ -82,7 +117,16 @@ function scrapeProblemInfo(): ScrapedProblem | null {
       }
     }
 
-    return { title, slug, difficulty }
+    const topics: string[] = []
+    const topicLinks = Array.from(document.querySelectorAll('a[href^="/tag/"]'))
+    for (const a of topicLinks) {
+      if (a.textContent) topics.push(a.textContent.trim())
+    }
+
+    // Deduplicate topics
+    const uniqueTopics = Array.from(new Set(topics))
+
+    return { title, slug, difficulty, topics: uniqueTopics }
   } catch {
     return null
   }
@@ -96,25 +140,34 @@ function buildAndSendSubmission(parsed: ParsedSubmission, problem: ScrapedProble
   sentIds.add(dedupId)
 
   console.log('LeetTrack: sending SUBMISSION message', { problem: problem.slug, result: parsed.result })
-  chrome.runtime.sendMessage({
-    type: 'SUBMISSION',
-    data: {
-      id: generateUUID(),
-      problemSlug: problem.slug,
-      problemTitle: problem.title,
-      difficulty: problem.difficulty,
-      result: parsed.result,
-      language: parsed.language,
-      code: parsed.code,
-      runtime: parsed.runtime,
-      memory: parsed.memory,
-      timestamp: ts,
-      leetcodeUrl: `https://leetcode.com/problems/${problem.slug}/`,
-      synced: false,
-    },
-  }).catch((err) => {
-    console.error('LeetTrack: sendMessage failed', err)
-  })
+  try {
+    chrome.runtime.sendMessage({
+      type: 'SUBMISSION',
+      data: {
+        id: generateUUID(),
+        problemSlug: problem.slug,
+        problemTitle: problem.title,
+        difficulty: problem.difficulty,
+        result: parsed.result,
+        language: parsed.language,
+        code: parsed.code,
+        runtime: parsed.runtime,
+        memory: parsed.memory,
+        timestamp: ts,
+        timeSeconds: Math.round((ts - pageLoadTime) / 1000),
+        leetcodeUrl: `https://leetcode.com/problems/${problem.slug}/`,
+        topics: problem.topics,
+        synced: false,
+      },
+    }).catch((err) => {
+      console.error('LeetTrack: sendMessage failed', err)
+    })
+  } catch (err) {
+    console.error('LeetTrack: Extension context invalidated. Please refresh the page.', err)
+  }
+
+  // Show the tagging widget
+  injectWidget(problem.slug)
 }
 
 // Listen for messages from the MAIN world script (fetch interceptor)
@@ -129,7 +182,7 @@ window.addEventListener('message', (event) => {
 let lastMutationSent = 0
 const observer = new MutationObserver(() => {
   const resultTexts = ['Accepted', 'Wrong Answer', 'Time Limit Exceeded']
-  const elements = document.querySelectorAll('[class*="result"], [class*="submission"]')
+  const elements = Array.from(document.querySelectorAll('[class*="result"], [class*="submission"]'))
 
   for (const el of elements) {
     const text = el.textContent?.trim() || ''
@@ -147,25 +200,34 @@ const observer = new MutationObserver(() => {
         sentIds.add(dedupId)
 
         console.log('LeetTrack: MutationObserver triggered, sending SUBMISSION', { problem: problem.slug })
-        chrome.runtime.sendMessage({
-          type: 'SUBMISSION',
-          data: {
-            id: generateUUID(),
-            problemSlug: problem.slug,
-            problemTitle: problem.title,
-            difficulty: problem.difficulty,
-            result: 'Accepted' as SubmissionResult,
-            language: '',
-            code: '',
-            runtime: '',
-            memory: '',
-            timestamp: now,
-            leetcodeUrl: `https://leetcode.com/problems/${problem.slug}/`,
-            synced: false,
-          },
-        }).catch((err) => {
-          console.error('LeetTrack: MutationObserver sendMessage failed', err)
-        })
+        try {
+          chrome.runtime.sendMessage({
+            type: 'SUBMISSION',
+            data: {
+              id: generateUUID(),
+              problemSlug: problem.slug,
+              problemTitle: problem.title,
+              difficulty: problem.difficulty,
+              result: 'Accepted' as SubmissionResult,
+              language: '',
+              code: '',
+              runtime: '',
+              memory: '',
+              timestamp: now,
+              timeSeconds: Math.round((now - pageLoadTime) / 1000),
+              leetcodeUrl: `https://leetcode.com/problems/${problem.slug}/`,
+              topics: problem.topics,
+              synced: false,
+            },
+          }).catch((err) => {
+            console.error('LeetTrack: MutationObserver sendMessage failed', err)
+          })
+        } catch (err) {
+          console.error('LeetTrack: Extension context invalidated. Please refresh the page.', err)
+        }
+
+        // Show the tagging widget
+        injectWidget(problem.slug)
       }, 2000)
       break
     }

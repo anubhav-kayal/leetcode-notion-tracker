@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -12,81 +12,71 @@ import type { Submission } from '../lib/types'
 
 interface TrendChartProps {
   submissions: Submission[]
-  days?: number
 }
 
-export function TrendChart({ submissions, days = 30 }: TrendChartProps) {
+export function TrendChart({ submissions }: TrendChartProps) {
   const data = useMemo(() => {
-    const result: { date: string; count: number; accepted: number }[] = []
-    if (submissions.length === 0) return result
-    const now = submissions.reduce(
-      (max, s) => Math.max(max, s.timestamp),
-      0
-    )
-    const startTs = now - days * 86400000
-
-    const dayMap: Record<string, { count: number; accepted: number }> = {}
-    for (const s of submissions) {
-      if (s.timestamp < startTs) continue
-      const date = new Date(s.timestamp).toISOString().split('T')[0]
-      if (!dayMap[date]) dayMap[date] = { count: 0, accepted: 0 }
-      dayMap[date].count++
-      if (s.result === 'Accepted') dayMap[date].accepted++
-    }
-
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date(now - i * 86400000).toISOString().split('T')[0]
+    const result: { week: string; accepted: number; failed: number }[] = []
+    
+    // Aggregate by week (last 4 weeks)
+    const now = Date.now()
+    const weeks = 4
+    
+    for (let i = weeks - 1; i >= 0; i--) {
+      const end = now - i * 7 * 86400000
+      const start = end - 7 * 86400000
+      
+      let accepted = 0
+      let failed = 0
+      
+      for (const s of submissions) {
+        if (s.timestamp > start && s.timestamp <= end) {
+          if (s.result === 'Accepted') accepted++
+          else failed++
+        }
+      }
+      
+      const startDate = new Date(start)
+      const weekLabel = `${startDate.toLocaleString('default', { month: 'short' })} ${startDate.getDate()}`
+      
       result.push({
-        date,
-        count: dayMap[date]?.count ?? 0,
-        accepted: dayMap[date]?.accepted ?? 0,
+        week: weekLabel,
+        accepted,
+        failed
       })
     }
-
     return result
-  }, [submissions, days])
+  }, [submissions])
 
   return (
-    <div className="w-full h-48 min-w-0">
-      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-        <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+    <div className="w-full h-[120px] min-w-0">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} layout="horizontal" margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+          <CartesianGrid stroke="var(--border-subtle)" strokeDasharray="0" vertical={false} />
           <XAxis
-            dataKey="date"
-            tick={{ fill: '#6b7280', fontSize: 10 }}
-            tickFormatter={d => {
-              const parts = d.split('-')
-              return `${parts[1]}/${parts[2]}`
-            }}
-            interval={Math.floor(days / 7)}
+            dataKey="week"
+            tick={{ fill: 'var(--text-tertiary)', fontSize: 11 }}
+            axisLine={false}
+            tickLine={false}
+            tickMargin={8}
           />
-          <YAxis tick={{ fill: '#6b7280', fontSize: 10 }} allowDecimals={false} />
+          <YAxis hide={true} />
           <Tooltip
+            cursor={{ fill: 'var(--surface-input)' }}
             contentStyle={{
-              backgroundColor: '#1f2937',
-              border: '1px solid #374151',
+              backgroundColor: 'var(--surface-raised)',
+              border: '1px solid var(--border-default)',
               borderRadius: '8px',
-              color: '#e5e7eb',
+              color: 'var(--text-primary)',
               fontSize: '12px',
+              padding: '8px 12px',
+              boxShadow: 'none'
             }}
+            itemStyle={{ color: 'var(--text-primary)' }}
           />
-          <Line
-            type="monotone"
-            dataKey="count"
-            stroke="#818cf8"
-            strokeWidth={2}
-            dot={false}
-            name="Total"
-          />
-          <Line
-            type="monotone"
-            dataKey="accepted"
-            stroke="#34d399"
-            strokeWidth={2}
-            dot={false}
-            name="Accepted"
-          />
-        </LineChart>
+          <Bar dataKey="accepted" name="Accepted" fill="var(--accent)" radius={[2, 2, 0, 0]} />
+          <Bar dataKey="failed" name="Failed" fill="var(--danger)" radius={[2, 2, 0, 0]} />
+        </BarChart>
       </ResponsiveContainer>
     </div>
   )

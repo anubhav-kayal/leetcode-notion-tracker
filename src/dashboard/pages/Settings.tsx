@@ -1,37 +1,33 @@
 import { useState, useEffect } from 'react'
-import { SaveIcon, EyeIcon, EyeOffIcon } from 'lucide-react'
-import { useSettings } from '../../hooks/useStorage'
+import { EyeIcon, EyeOffIcon, MonitorIcon, SunIcon, MoonIcon, DatabaseIcon, BrainIcon, CalendarIcon, AlertTriangleIcon } from 'lucide-react'
+import { useSettings, useStorageData } from '../../hooks/useStorage'
 import { generateInsight } from '../../lib/claude'
-import { useStorageData } from '../../hooks/useStorage'
+import { TOP_COMPANIES, type StorageData } from '../../lib/types'
+import type { Settings as SettingsType } from '../../lib/types'
 
 function InputField({
-  label,
   value,
   onChange,
   placeholder,
   isPassword,
   showValue,
+  type = 'text'
 }: {
-  label: string
   value: string
   onChange: (v: string) => void
-  placeholder: string
+  placeholder?: string
   isPassword?: boolean
-  showValue: boolean
+  showValue?: boolean
+  type?: string
 }) {
   return (
-    <div>
-      <label className="block text-sm font-medium text-gray-300 mb-1">{label}</label>
-      <div className="relative">
-        <input
-          type={isPassword && !showValue ? 'password' : 'text'}
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="w-full bg-gray-800 border border-gray-700 rounded-lg py-2 px-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 pr-10"
-        />
-      </div>
-    </div>
+    <input
+      type={isPassword && !showValue ? 'password' : type}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="text-sm bg-[var(--surface-input)] border border-[var(--border-default)] rounded-lg px-3 py-2 text-[var(--text-primary)] w-64 outline-none focus:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)]/50 focus-visible:ring-offset-1 placeholder:text-[var(--text-tertiary)] transition-all"
+    />
   )
 }
 
@@ -41,6 +37,8 @@ export function Settings() {
   const [notionKey, setNotionKey] = useState(settings.notionApiKey)
   const [notionDb, setNotionDb] = useState(settings.notionDatabaseId)
   const [claudeKey, setClaudeKey] = useState(settings.claudeApiKey)
+  const [theme, setTheme] = useState<SettingsType['theme']>(settings.theme)
+  const [targetCompany, setTargetCompany] = useState(settings.targetCompany || '')
   const [showKeys, setShowKeys] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -51,13 +49,14 @@ export function Settings() {
       setNotionKey(settings.notionApiKey)
       setNotionDb(settings.notionDatabaseId)
       setClaudeKey(settings.claudeApiKey)
+      setTheme(settings.theme || 'system')
+      setTargetCompany(settings.targetCompany || '')
     }
   }, [settings, loading])
 
   async function handleSave() {
     setSaving(true)
     
-    // Auto-extract Database ID from full Notion URL if the user pasted the entire URL
     let cleanDbId = notionDb.trim()
     const match = cleanDbId.match(/[a-f0-9]{32}/i)
     if (match) {
@@ -69,6 +68,8 @@ export function Settings() {
       notionApiKey: notionKey.trim(),
       notionDatabaseId: cleanDbId,
       claudeApiKey: claudeKey.trim(),
+      theme,
+      targetCompany: targetCompany.trim() || undefined,
     }))
     setSaving(false)
     setSaved(true)
@@ -96,8 +97,8 @@ export function Settings() {
   }
 
   async function handleResetAll() {
-    if (window.confirm('Reset all data? This cannot be undone.')) {
-      await updateData(() => ({
+    if (window.confirm('Are you absolutely sure you want to reset all data? This cannot be undone.')) {
+      const emptyData: StorageData = {
         submissions: [],
         problems: {},
         streak: 0,
@@ -106,122 +107,168 @@ export function Settings() {
         insight: null,
         pendingQueue: [],
         reviewQueue: [],
-      }))
+        companyList: [...TOP_COMPANIES],
+        interviews: [],
+      }
+      await updateData(() => emptyData)
     }
   }
 
-  const needsSetup = !notionKey && !notionDb
-
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Settings</h1>
-
-      {needsSetup && (
-        <div className="max-w-lg mb-8 bg-indigo-900/20 border border-indigo-700/30 rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-indigo-300 mb-3">Setup Guide</h2>
-          <ol className="space-y-3 text-sm text-gray-300">
-            <li className="flex gap-3">
-              <span className="flex items-center justify-center shrink-0 w-6 h-6 rounded-full bg-indigo-600 text-xs font-bold text-white">1</span>
-              <span>Go to <a href="https://www.notion.so/my-integrations" target="_blank" rel="noopener noreferrer" className="text-indigo-400 underline">notion.so/my-integrations</a> and create a new integration. Copy the API key.</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex items-center justify-center shrink-0 w-6 h-6 rounded-full bg-indigo-600 text-xs font-bold text-white">2</span>
-              <span>Create a database with properties: <code className="text-indigo-300 bg-indigo-900/30 px-1 rounded">Name</code> (Title), <code className="text-indigo-300 bg-indigo-900/30 px-1 rounded">Slug</code> (Text), <code className="text-indigo-300 bg-indigo-900/30 px-1 rounded">Difficulty</code> (Select), <code className="text-indigo-300 bg-indigo-900/30 px-1 rounded">Status</code> (Select), <code className="text-indigo-300 bg-indigo-900/30 px-1 rounded">URL</code> (URL), <code className="text-indigo-300 bg-indigo-900/30 px-1 rounded">Last Attempted</code> (Date), <code className="text-indigo-300 bg-indigo-900/30 px-1 rounded">Attempt Count</code> (Number).</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex items-center justify-center shrink-0 w-6 h-6 rounded-full bg-indigo-600 text-xs font-bold text-white">3</span>
-              <span>Share the database with your integration, then copy the Database ID from the URL.</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex items-center justify-center shrink-0 w-6 h-6 rounded-full bg-indigo-600 text-xs font-bold text-white">4</span>
-              <span>Fill in the fields below and click <strong>Save Settings</strong>.</span>
-            </li>
-          </ol>
-        </div>
-      )}
-
-      <div className="max-w-lg space-y-6">
-        <div className="bg-gray-800/30 rounded-xl p-5 border border-gray-800">
-          <h2 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-4">
-            Notion Integration
-          </h2>
-          <div className="space-y-3">
-            <InputField
-              label="Notion API Key"
-              value={notionKey}
-              onChange={setNotionKey}
-              placeholder="ntn_..."
-              isPassword
-              showValue={showKeys}
-            />
-            <InputField
-              label="Database ID"
-              value={notionDb}
-              onChange={setNotionDb}
-              placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-              isPassword
-              showValue={showKeys}
-            />
-          </div>
-        </div>
-
-        <div className="bg-gray-800/30 rounded-xl p-5 border border-gray-800">
-          <h2 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-4">
-            AI Insights
-          </h2>
-          <div className="space-y-3">
-            <InputField
-              label="Claude API Key"
-              value={claudeKey}
-              onChange={setClaudeKey}
-              placeholder="sk-ant-..."
-              isPassword
-              showValue={showKeys}
-            />
-            <button
-              onClick={handleGenerateInsight}
-              disabled={!settings.claudeApiKey || generatingInsight}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 disabled:text-gray-500 rounded-lg text-sm font-medium transition-colors"
-            >
-              {generatingInsight ? 'Generating...' : 'Generate AI Insight'}
-            </button>
-          </div>
-        </div>
-
+    <div className="max-w-2xl pb-10">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-medium text-[var(--text-primary)] tracking-tight">Settings</h1>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowKeys(v => !v)}
+            className="flex items-center gap-1.5 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+          >
+            {showKeys ? <EyeOffIcon size={14} /> : <EyeIcon size={14} />}
+            {showKeys ? 'Hide keys' : 'Show keys'}
+          </button>
+          {saved && <span className="text-xs text-[var(--success)] font-medium">Saved!</span>}
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 rounded-lg text-sm font-medium transition-colors"
+            className="flex items-center gap-1.5 text-xs font-medium text-white bg-[var(--accent)] rounded-lg px-4 py-2 cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50"
           >
-            <SaveIcon size={16} />
-            {saving ? 'Saving...' : 'Save Settings'}
-          </button>
-          {saved && <span className="text-emerald-400 text-sm">Saved!</span>}
-          <button
-            onClick={() => setShowKeys(v => !v)}
-            className="p-2.5 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors"
-            title={showKeys ? 'Hide keys' : 'Show keys'}
-          >
-            {showKeys ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
-          </button>
-        </div>
-
-        <div className="bg-red-900/10 rounded-xl p-5 border border-red-900/30">
-          <h2 className="text-sm font-medium text-red-400 uppercase tracking-wider mb-2">
-            Danger Zone
-          </h2>
-          <p className="text-xs text-gray-500 mb-3">
-            This will erase all local data including submissions, problems, and streaks.
-          </p>
-          <button
-            onClick={handleResetAll}
-            className="px-4 py-2 bg-red-800 hover:bg-red-700 rounded-lg text-sm font-medium transition-colors"
-          >
-            Reset All Data
+            {saving ? 'Saving...' : 'Save changes'}
           </button>
         </div>
       </div>
+
+      <div className="bg-[var(--surface-card)] border border-[var(--border-default)] rounded-xl mb-4">
+        <div className="px-5 py-4 border-b border-[var(--border-subtle)] flex items-center gap-3">
+          <DatabaseIcon size={18} className="text-[var(--text-tertiary)]" />
+          <h2 className="text-sm font-medium text-[var(--text-primary)]">Notion Integration</h2>
+        </div>
+        <div className="px-5 py-4 flex items-center justify-between border-b border-[var(--border-subtle)] last:border-0">
+          <div>
+            <div className="text-sm text-[var(--text-primary)]">Notion API Key</div>
+            <div className="text-xs text-[var(--text-tertiary)] mt-0.5">Used to authenticate with your Notion workspace</div>
+          </div>
+          <InputField
+            value={notionKey}
+            onChange={setNotionKey}
+            placeholder="ntn_..."
+            isPassword
+            showValue={showKeys}
+          />
+        </div>
+        <div className="px-5 py-4 flex items-center justify-between border-b border-[var(--border-subtle)] last:border-0">
+          <div>
+            <div className="text-sm text-[var(--text-primary)]">Database ID</div>
+            <div className="text-xs text-[var(--text-tertiary)] mt-0.5">The ID of the table where submissions are logged</div>
+          </div>
+          <InputField
+            value={notionDb}
+            onChange={setNotionDb}
+            placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            isPassword
+            showValue={showKeys}
+          />
+        </div>
+      </div>
+
+      <div className="bg-[var(--surface-card)] border border-[var(--border-default)] rounded-xl mb-4">
+        <div className="px-5 py-4 border-b border-[var(--border-subtle)] flex items-center gap-3">
+          <MonitorIcon size={18} className="text-[var(--text-tertiary)]" />
+          <h2 className="text-sm font-medium text-[var(--text-primary)]">Preferences</h2>
+        </div>
+        <div className="px-5 py-4 flex items-center justify-between border-b border-[var(--border-subtle)] last:border-0">
+          <div>
+            <div className="text-sm text-[var(--text-primary)]">Theme</div>
+            <div className="text-xs text-[var(--text-tertiary)] mt-0.5">Choose your preferred appearance</div>
+          </div>
+          <div className="flex bg-[var(--surface-input)] p-1 rounded-lg">
+            {(['light', 'dark', 'system'] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTheme(t)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  theme === t
+                    ? 'bg-[var(--surface-card)] text-[var(--text-primary)] shadow-sm'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                {t === 'light' ? <SunIcon size={14} /> : t === 'dark' ? <MoonIcon size={14} /> : <MonitorIcon size={14} />}
+                <span className="capitalize ml-0.5">{t}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-[var(--surface-card)] border border-[var(--border-default)] rounded-xl mb-4">
+        <div className="px-5 py-4 border-b border-[var(--border-subtle)] flex items-center gap-3">
+          <CalendarIcon size={18} className="text-[var(--text-tertiary)]" />
+          <h2 className="text-sm font-medium text-[var(--text-primary)]">Goals & Tracking</h2>
+        </div>
+        <div className="px-5 py-4 flex items-center justify-between border-b border-[var(--border-subtle)] last:border-0">
+          <div>
+            <div className="text-sm text-[var(--text-primary)]">Target Company</div>
+            <div className="text-xs text-[var(--text-tertiary)] mt-0.5">Focus your practice on a specific employer</div>
+          </div>
+          <InputField
+            value={targetCompany}
+            onChange={setTargetCompany}
+            placeholder="e.g. Google, Meta"
+          />
+        </div>
+      </div>
+
+      <div className="bg-[var(--surface-card)] border border-[var(--border-default)] rounded-xl mb-4">
+        <div className="px-5 py-4 border-b border-[var(--border-subtle)] flex items-center gap-3">
+          <BrainIcon size={18} className="text-[var(--text-tertiary)]" />
+          <h2 className="text-sm font-medium text-[var(--text-primary)]">AI Insights</h2>
+        </div>
+        <div className="px-5 py-4 flex items-center justify-between border-b border-[var(--border-subtle)] last:border-0">
+          <div>
+            <div className="text-sm text-[var(--text-primary)]">Claude API Key</div>
+            <div className="text-xs text-[var(--text-tertiary)] mt-0.5">Required to generate personalized insights</div>
+          </div>
+          <InputField
+            value={claudeKey}
+            onChange={setClaudeKey}
+            placeholder="sk-ant-..."
+            isPassword
+            showValue={showKeys}
+          />
+        </div>
+        <div className="px-5 py-4 flex items-center justify-between border-b border-[var(--border-subtle)] last:border-0">
+          <div>
+            <div className="text-sm text-[var(--text-primary)]">Generate Insight</div>
+            <div className="text-xs text-[var(--text-tertiary)] mt-0.5">Analyze your recent submissions for patterns</div>
+          </div>
+          <button
+            onClick={handleGenerateInsight}
+            disabled={!settings.claudeApiKey || generatingInsight}
+            className="text-xs font-medium text-[var(--accent)] border border-[var(--accent-border)] bg-[var(--accent-soft)] rounded-lg px-3 py-1.5 cursor-pointer hover:brightness-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {generatingInsight ? 'Generating...' : 'Generate manually'}
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-[var(--danger-soft)] border border-[var(--danger)]/20 rounded-xl mb-4">
+        <div className="px-5 py-4 border-b border-[var(--danger)]/10 flex items-center gap-3">
+          <AlertTriangleIcon size={18} className="text-[var(--danger)]" />
+          <h2 className="text-sm font-medium text-[var(--danger)]">Danger Zone</h2>
+        </div>
+        <div className="px-5 py-4 flex items-center justify-between">
+          <div>
+            <div className="text-sm text-[var(--text-primary)]">Clear all data</div>
+            <div className="text-xs text-[var(--text-tertiary)] mt-0.5">Reset all local submissions, problems, and streaks</div>
+          </div>
+          <button
+            onClick={handleResetAll}
+            className="text-xs text-[var(--danger)] border border-[var(--danger)]/30 rounded-lg px-3 py-1.5 hover:bg-[var(--danger)]/10 transition-colors"
+          >
+            Clear all data
+          </button>
+        </div>
+      </div>
+
     </div>
   )
 }

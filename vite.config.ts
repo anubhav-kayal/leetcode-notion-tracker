@@ -21,7 +21,7 @@ const manifest = {
   content_scripts: [
     {
       matches: ['https://leetcode.com/problems/*'],
-      js: ['src/content/isolated.ts'],
+      js: ['src/content/isolated.tsx'],
       run_at: 'document_start',
     },
     {

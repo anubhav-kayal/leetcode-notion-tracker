@@ -9,6 +9,8 @@ function asSettings(v: unknown): Settings {
   return v as Settings
 }
 
+import { TOP_COMPANIES } from '../lib/types'
+
 const DEFAULT_DATA: StorageData = {
   submissions: [],
   problems: {},
@@ -18,12 +20,15 @@ const DEFAULT_DATA: StorageData = {
   insight: null,
   pendingQueue: [],
   reviewQueue: [],
+  companyList: [...TOP_COMPANIES],
+  interviews: [],
 }
 
 const DEFAULT_SETTINGS: Settings = {
   notionApiKey: '',
   notionDatabaseId: '',
   claudeApiKey: '',
+  theme: 'system',
 }
 
 export function useStorageData() {
